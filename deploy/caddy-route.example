@@ -1,0 +1,7 @@
+# Put inside your site block (for example `health.example.com { ... }`),
+# before any generic /api/* handler. Only PulsHealth's write-only ingest and
+# its authenticated capability probe are public; /v1/health/* stays loopback-only.
+@pulse_relay_ingest path /api/health-sync/v1/batches /api/health-sync/v1/capabilities
+handle @pulse_relay_ingest {
+    reverse_proxy 127.0.0.1:8768
+}

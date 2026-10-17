@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pulse-relay"
+version = "0.1.0"
+description = "Relay Apple Watch health data from PulsHealth into SQLite and compact MCP tools for AI agents."
+requires-python = ">=3.11"
+
+[project.optional-dependencies]
+mcp = [
+    "mcp==1.28.1",
+    "httpx==0.28.1",
+]
+
+[project.scripts]
+pulse-relay = "pulse_relay.server:main"
+pulse-relay-mcp = "pulse_relay.mcp_server:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pulse_relay*"]

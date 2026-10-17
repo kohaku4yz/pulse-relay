@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="light" />
+<meta name="description" content="Pulse Relay：把 Apple Watch 健康数据通过 PulsHealth 同步到一个 SQLite 文件，再用两个 MCP 工具交给 AI 的自托管指南。" />
+<title>Pulse Relay — 自托管指南</title>
+<style>
+:root{
+  color-scheme:light;
+  --text:#37352f;
+  --muted:#787774;
+  --faint:#9b9a97;
+  --border:rgba(55,53,47,.16);
+  --code-bg:#f7f6f3;
+  --callout-bg:#f1f1ef;
+  --inline-bg:rgba(135,131,120,.15);
+  --link:#2f76b7;
+  --cover:#f2f4ee;
+  --sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:#fff;color:var(--text);font-family:var(--sans);font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased}
+a{color:var(--link);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px}
+.topline{height:46px;display:flex;align-items:center;padding:0 18px;position:relative;z-index:3;font-size:13px;color:var(--muted)}
+.topline a{color:inherit;text-decoration:none}.topline a:hover{text-decoration:underline}
+.topline .sep{margin:0 7px;color:#b8b6b1}
+.topline .lang-switch{margin-left:auto;display:inline-flex;align-items:center;gap:3px;padding:2px;border-radius:6px}
+.lang-switch button{border:0;background:transparent;color:var(--muted);font:12px var(--sans);padding:4px 7px;border-radius:5px;cursor:pointer}
+.lang-switch button:hover{background:var(--code-bg);color:var(--text)}
+.lang-switch button.active{background:var(--code-bg);color:var(--text);font-weight:600}
+[data-lang-only="en"]{display:none!important}
+html[data-ui-lang="en"] [data-lang-only="zh"]{display:none!important}
+html[data-ui-lang="en"] [data-lang-only="en"]{display:revert!important}
+.cover{display:none}
+.page{width:min(708px,calc(100% - 48px));margin:0 auto;padding:0 0 120px}
+.page-header{margin:54px 0 46px;position:relative;z-index:2}
+.page-icon{width:104px;height:122px;margin:0 0 22px;display:flex;align-items:flex-end}
+.page-icon img{display:block;width:auto;height:118px;max-width:104px;object-fit:contain}
+h1{margin:0 0 18px;font-size:clamp(2.45rem,7vw,3rem);font-weight:700;letter-spacing:-.035em;line-height:1.2}
+.subtitle{margin:0;padding-left:14px;border-left:3px solid var(--text);color:var(--text);font-weight:600}
+.lede{margin-top:26px}
+section{margin-top:42px;scroll-margin-top:28px}
+h2{margin:0 0 14px;font-size:1.52rem;font-weight:650;letter-spacing:-.018em;line-height:1.3}
+h3{margin:28px 0 10px;font-size:1.08rem;font-weight:650;line-height:1.35}
+p{margin:10px 0}
+ul,ol{margin:10px 0;padding-left:1.55em}li{margin:3px 0}strong{font-weight:650}
+code{font-family:var(--mono);font-size:.86em}
+p code,li code{padding:.12em .3em;border-radius:3px;background:var(--inline-bg);color:#eb5757}
+.code-wrap{position:relative;margin:14px 0}
+pre{margin:0;padding:18px 20px;overflow-x:auto;border-radius:3px;background:var(--code-bg);color:var(--text);font-family:var(--mono);font-size:.84rem;line-height:1.55;tab-size:2;white-space:pre}
+pre code{color:inherit;background:transparent;font-size:inherit}
+.copy{position:absolute;top:8px;right:8px;border:0;border-radius:4px;background:rgba(255,255,255,.88);color:var(--muted);font:12px var(--sans);padding:5px 8px;cursor:pointer;opacity:0;transition:opacity .12s ease,background .12s ease}
+.code-wrap:hover .copy,.copy:focus-visible{opacity:1}.copy:hover{background:#fff}
+.callout{margin:16px 0;padding:16px 18px;border-radius:3px;background:var(--callout-bg);display:grid;grid-template-columns:24px 1fr;gap:10px}.callout .icon{line-height:1.55}
+.architecture{margin:26px 0 0}.architecture figcaption{margin-top:7px;color:var(--muted);font-size:.82rem;text-align:left}
+.guide-shot{display:block;width:100%;height:auto;margin:18px 0 22px;border:1px solid var(--border);border-radius:8px}.guide-shot.tall{max-width:560px}
+.checklist{list-style:none;padding-left:0}.checklist li{display:grid;grid-template-columns:18px 1fr;gap:9px;margin:7px 0}.box{width:15px;height:15px;margin-top:5px;border:1.5px solid #9b9a97;border-radius:2px;background:#fff}
+.resources{padding-left:1.35em}.resources li{margin:6px 0}.references{overflow-wrap:anywhere}
+footer{margin-top:52px;color:var(--muted);font-size:.82rem}
+
+/* floating table of contents */
+.toc-dock{position:fixed;z-index:20;top:94px;right:18px;display:flex;align-items:flex-start;outline:none}
+.toc-rail{width:46px;padding:10px 8px;display:flex;flex-direction:column;align-items:center;gap:10px;border-radius:8px;cursor:default}
+.toc-rail a{width:30px;height:4px;border-radius:99px;background:#e5e4e1;text-decoration:none;transition:background .12s ease,transform .12s ease}
+.toc-rail a:hover{background:#bab8b3}.toc-rail a.active{background:#37352f}
+.toc-panel{position:absolute;right:50px;top:0;width:236px;padding:18px 20px;border:1px solid rgba(55,53,47,.13);border-radius:18px;background:rgba(255,255,255,.98);box-shadow:0 16px 42px rgba(15,15,15,.10),0 1px 2px rgba(15,15,15,.05);opacity:0;transform:translateX(8px) scale(.985);transform-origin:top right;pointer-events:none;transition:opacity .14s ease,transform .14s ease}
+.toc-dock:hover .toc-panel,.toc-dock:focus-within .toc-panel{opacity:1;transform:none;pointer-events:auto}
+.toc-panel a{display:block;padding:4px 0;color:#85827d;text-decoration:none;font-size:15px;line-height:1.55;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toc-panel a:hover{color:var(--text)}.toc-panel a.active{color:#4d82d8}
+
+@media(max-width:1040px){.toc-dock{display:none}}
+@media(max-width:600px){
+ body{font-size:15.5px}.topline{height:42px;padding:0 14px}.cover{height:116px}.page{width:min(100% - 32px,708px);padding-bottom:82px}.page-header{margin-top:34px;margin-bottom:38px}.page-icon{width:68px;height:80px;margin-bottom:18px}.page-icon img{height:78px;max-width:68px}section{margin-top:36px}pre{margin-inline:-4px;padding:15px 16px;font-size:.78rem}.copy{opacity:1}.architecture pre{font-size:.72rem}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+
+.emoji-icon{font-size:78px;line-height:1;align-items:flex-end}
+figure{margin:0}
+.shots{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0 6px}
+.shots img{display:block;width:100%;height:auto;border:1px solid var(--border);border-radius:14px}
+.shots figcaption{margin-top:6px;color:var(--muted);font-size:.8rem;text-align:center}
+.tables{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:16px 0}
+.tcard{border:1px solid var(--border);border-radius:6px;padding:10px 14px;font-size:.86rem}
+.tcard .tname{font-family:var(--mono);font-weight:650;margin-bottom:4px}
+.tcard ul{list-style:none;padding:0;margin:0}.tcard li{margin:2px 0;font-family:var(--mono);font-size:.8rem;color:var(--muted)}
+.tcard b{color:var(--text);font-weight:600}.tcard i{font-style:normal;font-size:.68rem;color:#eb5757;border:1px solid rgba(235,87,87,.35);border-radius:3px;padding:0 3px}
+.tcard .arrow{color:var(--link)}
+.table-wrap{overflow-x:auto;margin:14px 0}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th,td{border:1px solid var(--border);padding:7px 10px;vertical-align:top;text-align:left}
+th{background:var(--code-bg);font-weight:600}
+td:first-child,td:nth-child(2){white-space:nowrap}
+td code{font-size:.78rem;color:var(--text);background:none;padding:0;overflow-wrap:anywhere}
+.chart-fig{margin:18px 0}.chart{display:block;width:100%;height:auto;font-family:var(--sans)}
+.chart-fig figcaption{margin-top:4px;color:var(--muted);font-size:.82rem}
+@media(max-width:600px){.shots{gap:8px}.tables{grid-template-columns:1fr}}
+</style>
+
+</head>
+<body>
+<nav class="topline" aria-label="Breadcrumb">
+  <a href="https://github.com/kohaku4yz/pulse-relay" target="_blank" rel="noreferrer">kohaku4yz/pulse-relay</a><span class="sep">/</span><span data-lang-only="zh">自托管指南</span><span data-lang-only="en">Self-hosting guide</span>
+  <div class="lang-switch" role="group" aria-label="Language">
+    <button type="button" data-lang-set="zh" aria-pressed="true">中文</button>
+    <button type="button" data-lang-set="en" aria-pressed="false">English</button>
+  </div>
+</nav>
+
+<aside class="toc-dock" aria-label="页面目录" tabindex="0">
+  <nav class="toc-rail" aria-label="目录快速导航">
+    <a href="#ios" data-label-zh="iOS 端 → PulsHealth" data-label-en="iOS side → PulsHealth"></a>
+    <a href="#structure" data-label-zh="仓库结构" data-label-en="Repository structure"></a>
+    <a href="#schema" data-label-zh="数据结构" data-label-en="Data schema"></a>
+    <a href="#mcp" data-label-zh="MCP 工具与读取算法" data-label-en="MCP tools &amp; reads"></a>
+    <a href="#growth" data-label-zh="数据增长参考" data-label-en="Data growth"></a>
+    <a href="#notes" data-label-zh="注意事项" data-label-en="Notes"></a>
+    <a href="#license" data-label-zh="许可证" data-label-en="License"></a>
+    <a href="#references" data-label-zh="参考" data-label-en="References"></a>
+  </nav>
+  <nav class="toc-panel" aria-label="页面目录展开">
+    <a href="#ios" data-label-zh="iOS 端 → PulsHealth" data-label-en="iOS side → PulsHealth">iOS 端 → PulsHealth</a>
+    <a href="#structure" data-label-zh="仓库结构" data-label-en="Repository structure">仓库结构</a>
+    <a href="#schema" data-label-zh="数据结构" data-label-en="Data schema">数据结构</a>
+    <a href="#mcp" data-label-zh="MCP 工具与读取算法" data-label-en="MCP tools &amp; reads">MCP 工具与读取算法</a>
+    <a href="#growth" data-label-zh="数据增长参考" data-label-en="Data growth">数据增长参考</a>
+    <a href="#notes" data-label-zh="注意事项" data-label-en="Notes">注意事项</a>
+    <a href="#license" data-label-zh="许可证" data-label-en="License">许可证</a>
+    <a href="#references" data-label-zh="参考" data-label-en="References">参考</a>
+  </nav>
+</aside>
+
+<main class="page">
+  <header class="page-header" id="overview">
+    <div class="page-icon emoji-icon" aria-hidden="true">💞</div>
+    <h1>Pulse Relay</h1>
+    <blockquote class="subtitle" data-lang-only="zh">一个小小的 Python 服务器：接收 Apple Watch 的健康数据，存进 SQLite，再把精简摘要交给 AI。</blockquote>
+    <blockquote class="subtitle" data-lang-only="en">A small Python server that takes Apple Watch health data, stores it in one SQLite file, and passes short summaries to the AIs.</blockquote>
+    <figure class="architecture">
+      <pre><code>Apple Watch / iPhone   (HealthKit)
+        │
+        ▼
+PulsHealth app
+        │  HTTPS · bearer token · gzip NDJSON (Puls Sync v1)
+        ▼
+Caddy   only /api/health-sync/* is public
+        │
+        ▼
+server.py  127.0.0.1:8768 ───▶ health.sqlite3
+        │
+        │  GET /v1/health/day · /v1/health/heartbeat  (loopback only)
+        ├──────────────────────────┐
+        ▼                          ▼
+mcp_server.py :8879          health tools in haru-vps-mcp
+(Claude Code)                (ChatGPT, via OpenAI MCP tunnel)</code></pre>
+      <figcaption data-lang-only="zh">整体流程：手表 → PulsHealth → 你的服务器 → 两个 AI。</figcaption>
+      <figcaption data-lang-only="en">The whole path: watch → PulsHealth → your server → two AIs.</figcaption>
+    </figure>
+  </header>
+
+  <section id="ios">
+    <h2 data-lang-only="zh">iOS 端 → PulsHealth</h2>
+    <h2 data-lang-only="en">iOS side → PulsHealth</h2>
+    <p data-lang-only="zh">PulsHealth：开源、免费的 Apple 健康数据自动导出 App → <a href="https://github.com/PulsHealth/pulshealth" target="_blank" rel="noreferrer">PulsHealth/pulshealth</a>（Apache-2.0，App Store 免费下载）。</p>
+    <p data-lang-only="en">PulsHealth: an open-source app for automatic health data exports, free of charge → <a href="https://github.com/PulsHealth/pulshealth" target="_blank" rel="noreferrer">PulsHealth/pulshealth</a> (Apache-2.0, free on the App Store).</p>
+
+    <h3 data-lang-only="zh">1. 服务器端安装</h3>
+    <h3 data-lang-only="en">1. Install the server</h3>
+    <p data-lang-only="zh">以 root 身份 clone 并安装。<code>install.sh</code> 会先跑测试，再切换版本，失败时自动回滚；第一次安装时会自动生成写入用的 token，保存在 <code>/etc/pulse-relay/service.env</code>（<code>PULSE_RELAY_INGEST_TOKEN</code>，64 位十六进制，只有 root 能读）。</p>
+    <p data-lang-only="en">Clone and install as root. <code>install.sh</code> runs the tests, swaps the release in, and rolls back on failure. The first install creates the ingest token in <code>/etc/pulse-relay/service.env</code> (<code>PULSE_RELAY_INGEST_TOKEN</code>, 64 hex chars, readable by root only).</p>
+    <div class="code-wrap"><button class="copy" type="button">Copy</button><pre><code>sudo git clone https://github.com/kohaku4yz/pulse-relay /root/pulse-relay
+sudo bash /root/pulse-relay/deploy/install.sh
+sudo bash /opt/pulse-relay/deploy/verify.sh</code></pre></div>
+    <p data-lang-only="zh">服务器需要放在 HTTPS 后面。对外只开放 <code>/api/health-sync/*</code>，读取接口只监听 127.0.0.1。Caddy 示例：</p>
+    <p data-lang-only="en">Put it behind HTTPS. Only <code>/api/health-sync/*</code> is exposed; the read routes stay on 127.0.0.1. Caddy example:</p>
+    <div class="code-wrap"><button class="copy" type="button">Copy</button><pre><code>health.example.com {
+    @pulse_relay_ingest path /api/health-sync/v1/batches /api/health-sync/v1/capabilities
+    handle @pulse_relay_ingest {
+        reverse_proxy 127.0.0.1:8768
+    }
+}</code></pre></div>
+
+    <h3 data-lang-only="zh">2. 连接数据库</h3>
+    <h3 data-lang-only="en">2. Connect the database</h3>
+    <p data-lang-only="zh">在 PulsHealth 的「Sync → Database」里填写 <strong>Database URL</strong> = <code>https://&lt;你的域名&gt;/api/health-sync</code>，<strong>Token</strong> = 上面那串 → 点 Test Connection → Save &amp; Apply。</p>
+    <p data-lang-only="en">Under <strong>Sync → Database</strong>, enter <strong>Database URL</strong> = <code>https://&lt;your-host&gt;/api/health-sync</code> and <strong>Token</strong> = the value above → Test Connection → Save &amp; Apply.</p>
+    <p data-lang-only="zh">也可以扫码配对：下面的命令会打印一条 <code>puls://pair?…</code> 链接和终端二维码 → 用 iPhone 相机扫一下，PulsHealth 会自动填好 URL 和 Token。（pulse-relay 是单用户的，<code>user</code> 字段固定一个 UUID 就行。）</p>
+    <p data-lang-only="en">Or pair by QR: the command below prints a <code>puls://pair?…</code> link and a terminal QR code → scan it with the iPhone camera → PulsHealth opens and fills in both fields. (pulse-relay is single-user, so the <code>user</code> field is a fixed UUID.)</p>
+    <div class="code-wrap"><button class="copy" type="button">Copy</button><pre><code>sudo apt install qrencode   # optional, for the QR code
+sudo bash /opt/pulse-relay/deploy/pairing.sh https://health.example.com</code></pre></div>
+    <aside class="callout" data-lang-only="zh"><div class="icon">⚠️</div><div>配对链接和二维码里含有 token，不要截图或分享。</div></aside>
+    <aside class="callout" data-lang-only="en"><div class="icon">⚠️</div><div>The pairing link and QR code contain the token. Don't screenshot or share them.</div></aside>
+
+    <h3 data-lang-only="zh">3. 选择数据类型</h3>
+    <h3 data-lang-only="en">3. Pick the data types</h3>
+    <ul data-lang-only="zh">
+      <li><strong>活动：</strong>步数、步行+跑步距离、爬楼层数、活动能量、锻炼分钟数</li>
+      <li><strong>心脏：</strong>心率、静息心率、HRV</li>
+      <li><strong>呼吸：</strong>呼吸频率、血氧</li>
+      <li><strong>睡眠：</strong>睡眠阶段、睡眠时手腕温度</li>
+    </ul>
+    <ul data-lang-only="en">
+      <li><strong>Activity:</strong> Steps, Walking + Running Distance, Flights Climbed, Active Energy, Exercise Minutes</li>
+      <li><strong>Heart:</strong> Heart Rate, Resting Heart Rate, HRV</li>
+      <li><strong>Respiratory:</strong> Respiratory Rate, Blood Oxygen</li>
+      <li><strong>Sleep:</strong> Sleep Stages, Sleeping Wrist Temperature</li>
+    </ul>
+
+    <h3 data-lang-only="zh">4. 为活动数据创建 Aggregate</h3>
+    <h3 data-lang-only="en">4. Create activity aggregates</h3>
+    <p data-lang-only="zh">创建活动数据 Aggregate（汇总），方便 server 端去重：每日汇总 <strong>Sum · 1 day · All Devices</strong>，每小时汇总 <strong>Sum · 1 hour · All Devices</strong>（Settle delay 15 分钟）。</p>
+    <p data-lang-only="en">Create aggregates for activity data for cleaner dedup on the server side: daily <strong>Sum · 1 day · All Devices</strong> and hourly <strong>Sum · 1 hour · All Devices</strong> (15-minute settle delay).</p>
+    <div class="shots">
+      <figure><img src="assets/pulshealth-database.jpg" alt="PulsHealth Sync → Database screen" loading="lazy" /><figcaption>Sync → Database</figcaption></figure>
+      <figure><img src="assets/pulshealth-aggregate-daily.jpg" alt="PulsHealth daily Sum aggregate, All Devices" loading="lazy" /><figcaption>Sum · 1 day</figcaption></figure>
+      <figure><img src="assets/pulshealth-aggregate-hourly.jpg" alt="PulsHealth hourly Sum aggregate, All Devices" loading="lazy" /><figcaption>Sum · 1 hour</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="structure">
+    <h2 data-lang-only="zh">仓库结构</h2>
+    <h2 data-lang-only="en">Repository structure</h2>
+    <div class="code-wrap"><pre><code>pulse-relay/
+├── pulse_relay/
+│   ├── server.py         # stdlib HTTP server: Puls ingest + 4 read routes
+│   ├── store.py          # SQLite schema, Puls parser, dedup, read algorithms
+│   ├── health_client.py  # compact client = the agent contract
+│   └── mcp_server.py     # 2-tool MCP server (FastMCP, streamable HTTP)
+├── deploy/
+│   ├── install.sh / verify.sh        # root installer: test → swap → rollback
+│   ├── pulse-relay.service.example   # hardened systemd unit
+│   ├── pairing.sh                    # prints puls://pair link + QR
+│   ├── install-mcp.sh + .service     # optional MCP install
+│   └── caddy-route.example
+├── tests/        # stdlib unittest (ingest, dedup, reads, agent contract)
+└── tests_mcp/    # MCP tool tests</code></pre></div>
+    <p data-lang-only="zh">核心代码约 2k 行，服务器<strong>零运行时依赖</strong>（只用 Python 标准库）；可选的 MCP 额外需要 <code>mcp</code> + <code>httpx</code>。</p>
+    <p data-lang-only="en">About 2k lines of core code with <strong>zero runtime dependencies</strong> for the server (Python stdlib only); the optional MCP adds <code>mcp</code> + <code>httpx</code>.</p>
+  </section>
+
+  <section id="schema">
+    <h2 data-lang-only="zh">数据结构</h2>
+    <h2 data-lang-only="en">Data schema</h2>
+    <div class="tables">
+      <div class="tcard"><div class="tname">metric_samples</div><ul><li><b>metric</b> <i>PK</i></li><li><b>observed_at</b> <i>PK</i></li><li><b>source</b> <i>PK</i> · Apple Watch / iPhone</li><li>local_date · units · kind</li><li>payload_json · received_at</li></ul></div>
+      <div class="tcard"><div class="tname">puls_sample_map</div><ul><li><b>uuid</b> <i>PK</i> · HealthKit UUID</li><li>metric · observed_at · source <span class="arrow">→ row</span></li></ul></div>
+      <div class="tcard"><div class="tname">puls_batches</div><ul><li><b>batch_id</b> <i>PK</i></li><li>received_at</li></ul></div>
+      <div class="tcard"><div class="tname">sync_state</div><ul><li><b>key</b> <i>PK</i></li><li>value · e.g. last_sync_at</li></ul></div>
+    </div>
+    <p data-lang-only="zh">只保留 12 种 HealthKit 类型：6 项生命体征（心率、HRV、静息心率、呼吸频率、手腕温度、血氧）、睡眠，以及 5 项活动累计（步数、距离、楼层、活动能量、锻炼分钟）。其他类型会被接收但直接丢弃。</p>
+    <p data-lang-only="en">Only 12 allow-listed HealthKit types are kept: 6 vitals (heart rate, HRV, resting HR, respiratory rate, wrist temperature, SpO₂), sleep, and 5 activity counters (steps, distance, flights, active energy, exercise minutes). Everything else is accepted and dropped.</p>
+
+    <h3 data-lang-only="zh">去重分层</h3>
+    <h3 data-lang-only="en">Dedup layers</h3>
+    <div class="code-wrap"><pre><code>WRITE  Puls batch ─▶ batch_id seen? ── yes ─▶ 200, nothing written
+                         │ no
+                         ▼
+                    sample UUID seen? ── yes ─▶ skip
+                         │ no
+                         ▼
+                    canonical source  ("Alex's Apple Watch" → Apple Watch)
+                         ▼
+                    UPSERT (metric, observed_at, source)
+
+READ   per metric, per local day
+         1. all-device daily sum           ─▶ use it
+         2. hourly buckets + raw tail      ─▶ use it
+         3. raw rows of ONE source         (never Watch + iPhone summed)
+         ▼
+       unit normalize at read time   m→km · kJ→kcal · s→min</code></pre></div>
+    <ul data-lang-only="zh">
+      <li>同一批次重发 → 直接返回成功，不重复写入；同一个样本 UUID → 跳过。</li>
+      <li>设备改名：「Alex 的 Apple Watch」统一记为 <code>Apple Watch</code>。</li>
+      <li>活动数据按「每日汇总 → 每小时汇总 + 最新尾巴 → 单一来源原始数据」的优先级读取，<strong>绝不把 Watch 和 iPhone 的步数加在一起</strong>。</li>
+      <li>单位在读取时统一换算（m→km、kJ→kcal、秒→分钟），不改动原始数据。</li>
+      <li>在 iPhone 上删除的健康数据，服务器也会同步删除。</li>
+    </ul>
+    <ul data-lang-only="en">
+      <li>A re-sent batch returns success and writes nothing; a known sample UUID is skipped.</li>
+      <li>Device renames are harmless: "Alex's Apple Watch" is stored as <code>Apple Watch</code>.</li>
+      <li>Activity is read as daily aggregate → hourly aggregates + latest tail → one source's raw rows, so <strong>Watch and iPhone steps are never added together</strong>.</li>
+      <li>Units are normalized at read time (m→km, kJ→kcal, s→min); stored rows are never rewritten.</li>
+      <li>Samples deleted on the iPhone are deleted on the server too.</li>
+    </ul>
+  </section>
+
+  <section id="mcp">
+    <h2 data-lang-only="zh">MCP 工具与读取算法</h2>
+    <h2 data-lang-only="en">MCP tools and read algorithm</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Tool</th><th>Args</th><th>Returns</th></tr></thead>
+      <tbody>
+        <tr><td><code>health_detail</code></td><td><code>date?: "YYYY-MM-DD"</code></td><td><code>status, date, freshness_seconds, latest{…, units, age_seconds}, activity{qty, units}, sleep{core, rem, deep, awake, …}, heart_rate{count, avg, min, max, latest, last_observed_at}</code></td></tr>
+        <tr><td><code>heartbeat</code></td><td>—</td><td><code>status, bpm, observed_at, age_seconds, freshness_seconds</code></td></tr>
+      </tbody>
+    </table></div>
+    <ul data-lang-only="zh">
+      <li><code>health_detail(date?)</code>：某一天的精简健康摘要（不填日期 ⇒ 最近有数据的一天），包括生命体征、活动、睡眠、心率统计。</li>
+      <li><code>heartbeat()</code>：最新的一次心率，以及判断它「新不新鲜」所需的时间信息。</li>
+      <li>两个 timestamps 区分同步和测量 freshness：<strong><code>age_seconds</code></strong> = 这个测量值有多旧；<strong><code>freshness_seconds</code></strong> = 手机多久没同步了。</li>
+      <li>空值 / <code>unavailable</code> <strong>不等于 0</strong>，工具说明里会明确告诉 AI。</li>
+    </ul>
+    <ul data-lang-only="en">
+      <li><code>health_detail(date?)</code>: a compact summary of one day (no date ⇒ the latest day with data): vitals, activity, sleep and heart-rate stats.</li>
+      <li><code>heartbeat()</code>: the latest heart rate, plus the timing needed to judge whether it is current.</li>
+      <li>Two clocks on purpose: <strong><code>age_seconds</code></strong> = how old the measurement is; <strong><code>freshness_seconds</code></strong> = how long since the phone last synced. A fresh sync can still carry an old heart rate.</li>
+      <li>Empty / <code>unavailable</code> is <strong>not zero</strong>, and the tool description tells the model so.</li>
+    </ul>
+    <div class="code-wrap"><pre><code>AI agent ──health_detail(date?)──▶ mcp_server.py :8879
+                                        │ GET /v1/health/day?date=
+                                        ▼
+                                   server.py :8768 ──▶ SQLite
+                                        │  latest vitals · activity precedence
+                                        │  sleep session · heart-rate summary
+                                        ▼
+AI agent ◀──── compact JSON (allow-listed keys only) ────┘</code></pre></div>
+    <p data-lang-only="zh">接入 Claude Code（MCP 和 Claude Code 在同一台主机上）：</p>
+    <p data-lang-only="en">Connect Claude Code (running on the same host as the MCP):</p>
+    <div class="code-wrap"><button class="copy" type="button">Copy</button><pre><code>sudo bash /root/pulse-relay/deploy/install-mcp.sh
+claude mcp add --transport http health http://127.0.0.1:8879/mcp</code></pre></div>
+  </section>
+
+  <section id="growth">
+    <h2 data-lang-only="zh">数据增长参考</h2>
+    <h2 data-lang-only="en">Data growth for reference</h2>
+    <p data-lang-only="zh">真实数据，只统计数量：覆盖 375 天（2025-10-06 → 2026-10-17），约 5.67 万条样本，数据库 <strong>26 MB</strong>。</p>
+    <p data-lang-only="en">Real numbers, counts only: 375 days covered (2025-10-06 → 2026-10-17), about 56.7k samples, <strong>26 MB</strong> of SQLite.</p>
+    <figure class="chart-fig">
+      <svg viewBox="0 0 660 250" role="img" aria-labelledby="g1t" class="chart"><title id="g1t">Cumulative rows</title><line x1="52" x2="644" y1="216.0" y2="216.0" stroke="#ebeae7"/><text x="44" y="220.0" text-anchor="end" fill="#9b9a97" font-size="11">0k</text><line x1="52" x2="644" y1="152.0" y2="152.0" stroke="#ebeae7"/><text x="44" y="156.0" text-anchor="end" fill="#9b9a97" font-size="11">20k</text><line x1="52" x2="644" y1="88.0" y2="88.0" stroke="#ebeae7"/><text x="44" y="92.0" text-anchor="end" fill="#9b9a97" font-size="11">40k</text><line x1="52" x2="644" y1="24.0" y2="24.0" stroke="#ebeae7"/><text x="44" y="28.0" text-anchor="end" fill="#9b9a97" font-size="11">60k</text><text x="86.8" y="238" text-anchor="middle" fill="#9b9a97" font-size="11">01</text><text x="156.5" y="238" text-anchor="middle" fill="#9b9a97" font-size="11">03</text><text x="226.1" y="238" text-anchor="middle" fill="#9b9a97" font-size="11">05</text><text x="295.8" y="238" text-anchor="middle" fill="#9b9a97" font-size="11">07</text><text x="365.4" y="238" text-anchor="middle" fill="#9b9a97" font-size="11">09</text><text x="435.1" y="238" text-anchor="middle" fill="#9b9a97" font-size="11">11</text><text x="504.7" y="238" text-anchor="middle" fill="#9b9a97" font-size="11">13</text><text x="574.4" y="238" text-anchor="middle" fill="#9b9a97" font-size="11">15</text><text x="644.0" y="238" text-anchor="middle" fill="#9b9a97" font-size="11">17</text><polygon points="52.0,216.0 52.0,212.9 86.8,211.5 121.6,209.9 156.5,208.1 191.3,206.9 226.1,205.6 260.9,201.9 295.8,68.4 330.6,65.3 365.4,63.0 400.2,61.2 435.1,59.1 469.9,56.5 504.7,54.7 539.5,48.2 574.4,42.0 609.2,37.6 644.0,34.4 644.0,216.0" fill="rgba(47,118,183,.10)"/><polyline points="52.0,212.9 86.8,211.5 121.6,209.9 156.5,208.1 191.3,206.9 226.1,205.6 260.9,201.9 295.8,68.4 330.6,65.3 365.4,63.0 400.2,61.2 435.1,59.1 469.9,56.5 504.7,54.7 539.5,48.2 574.4,42.0 609.2,37.6 644.0,34.4" fill="none" stroke="#2f76b7" stroke-width="2.2" stroke-linejoin="round"/><circle cx="52.0" cy="212.9" r="2.6" fill="#2f76b7"/><circle cx="86.8" cy="211.5" r="2.6" fill="#2f76b7"/><circle cx="121.6" cy="209.9" r="2.6" fill="#2f76b7"/><circle cx="156.5" cy="208.1" r="2.6" fill="#2f76b7"/><circle cx="191.3" cy="206.9" r="2.6" fill="#2f76b7"/><circle cx="226.1" cy="205.6" r="2.6" fill="#2f76b7"/><circle cx="260.9" cy="201.9" r="2.6" fill="#2f76b7"/><circle cx="295.8" cy="68.4" r="2.6" fill="#2f76b7"/><circle cx="330.6" cy="65.3" r="2.6" fill="#2f76b7"/><circle cx="365.4" cy="63.0" r="2.6" fill="#2f76b7"/><circle cx="400.2" cy="61.2" r="2.6" fill="#2f76b7"/><circle cx="435.1" cy="59.1" r="2.6" fill="#2f76b7"/><circle cx="469.9" cy="56.5" r="2.6" fill="#2f76b7"/><circle cx="504.7" cy="54.7" r="2.6" fill="#2f76b7"/><circle cx="539.5" cy="48.2" r="2.6" fill="#2f76b7"/><circle cx="574.4" cy="42.0" r="2.6" fill="#2f76b7"/><circle cx="609.2" cy="37.6" r="2.6" fill="#2f76b7"/><circle cx="644.0" cy="34.4" r="2.6" fill="#2f76b7"/><text x="303.8" y="86.4" fill="#37352f" font-size="12" font-weight="600"><tspan data-lang-only="zh">10/07 首次同步：一天回填 4.17 万条（一年历史）</tspan><tspan data-lang-only="en">10/07 first sync: +41.7k rows (one year of history)</tspan></text><text x="644.0" y="24.4" text-anchor="end" fill="#37352f" font-size="12" font-weight="600">56.7k · 26 MB</text></svg>
+      <figcaption data-lang-only="zh">累计行数（按写入日期）。10/07 之前的约 4.4 千行来自之前用的导出 App。</figcaption>
+      <figcaption data-lang-only="en">Cumulative rows by the day they were written. The ~4.4k rows before 10/07 came from an earlier export app.</figcaption>
+    </figure>
+    <figure class="chart-fig">
+      <svg viewBox="0 0 660 190" role="img" aria-labelledby="g2t" class="chart"><title id="g2t">Rows per day after backfill</title><line x1="52" x2="644" y1="156.0" y2="156.0" stroke="#ebeae7"/><text x="44" y="160.0" text-anchor="end" fill="#9b9a97" font-size="11">0</text><line x1="52" x2="644" y1="100.8" y2="100.8" stroke="#ebeae7"/><text x="44" y="104.8" text-anchor="end" fill="#9b9a97" font-size="11">1,000</text><line x1="52" x2="644" y1="45.6" y2="45.6" stroke="#ebeae7"/><text x="44" y="49.6" text-anchor="end" fill="#9b9a97" font-size="11">2,000</text><rect x="62.7" y="102.7" width="37.9" height="53.3" rx="2" fill="#2f76b7" opacity=".78"/><text x="81.6" y="97.7" text-anchor="middle" fill="#37352f" font-size="10.5">966</text><text x="81.6" y="178" text-anchor="middle" fill="#9b9a97" font-size="11">08</text><rect x="121.9" y="115.9" width="37.9" height="40.1" rx="2" fill="#2f76b7" opacity=".78"/><text x="140.8" y="110.9" text-anchor="middle" fill="#37352f" font-size="10.5">726</text><text x="140.8" y="178" text-anchor="middle" fill="#9b9a97" font-size="11">09</text><rect x="181.1" y="126.2" width="37.9" height="29.8" rx="2" fill="#2f76b7" opacity=".78"/><text x="200.0" y="121.2" text-anchor="middle" fill="#37352f" font-size="10.5">539</text><text x="200.0" y="178" text-anchor="middle" fill="#9b9a97" font-size="11">10</text><rect x="240.3" y="118.2" width="37.9" height="37.8" rx="2" fill="#2f76b7" opacity=".78"/><text x="259.2" y="113.2" text-anchor="middle" fill="#37352f" font-size="10.5">685</text><text x="259.2" y="178" text-anchor="middle" fill="#9b9a97" font-size="11">11</text><rect x="299.5" y="111.7" width="37.9" height="44.3" rx="2" fill="#2f76b7" opacity=".78"/><text x="318.4" y="106.7" text-anchor="middle" fill="#37352f" font-size="10.5">803</text><text x="318.4" y="178" text-anchor="middle" fill="#9b9a97" font-size="11">12</text><rect x="358.7" y="125.9" width="37.9" height="30.1" rx="2" fill="#2f76b7" opacity=".78"/><text x="377.6" y="120.9" text-anchor="middle" fill="#37352f" font-size="10.5">546</text><text x="377.6" y="178" text-anchor="middle" fill="#9b9a97" font-size="11">13</text><rect x="417.9" y="43.5" width="37.9" height="112.5" rx="2" fill="#2f76b7" opacity=".78"/><text x="436.8" y="38.5" text-anchor="middle" fill="#37352f" font-size="10.5">2,038</text><text x="436.8" y="178" text-anchor="middle" fill="#9b9a97" font-size="11">14</text><rect x="477.1" y="49.4" width="37.9" height="106.6" rx="2" fill="#2f76b7" opacity=".78"/><text x="496.0" y="44.4" text-anchor="middle" fill="#37352f" font-size="10.5">1,931</text><text x="496.0" y="178" text-anchor="middle" fill="#9b9a97" font-size="11">15</text><rect x="536.3" y="79.2" width="37.9" height="76.8" rx="2" fill="#2f76b7" opacity=".78"/><text x="555.2" y="74.2" text-anchor="middle" fill="#37352f" font-size="10.5">1,392</text><text x="555.2" y="178" text-anchor="middle" fill="#9b9a97" font-size="11">16</text><rect x="595.5" y="101.9" width="37.9" height="54.1" rx="2" fill="#2f76b7" opacity=".78"/><text x="614.4" y="96.9" text-anchor="middle" fill="#37352f" font-size="10.5">980</text><text x="614.4" y="178" text-anchor="middle" fill="#9b9a97" font-size="11">17</text></svg>
+      <figcaption data-lang-only="zh">回填之后每天写入的行数：约 500–2,000 条、100–400 个批次。</figcaption>
+      <figcaption data-lang-only="en">Rows written per day after the backfill: about 500–2,000 rows in 100–400 batches.</figcaption>
+    </figure>
+    <p data-lang-only="zh">估算每天增长约 0.5 MB，一年大约 150–200 MB。</p>
+    <p data-lang-only="en">Estimated growth: about 0.5 MB per day, roughly 150–200 MB per year.</p>
+  </section>
+
+  <section id="notes">
+    <h2 data-lang-only="zh">注意事项</h2>
+    <h2 data-lang-only="en">Notes</h2>
+    <aside class="callout" data-lang-only="zh"><div class="icon">⚠️</div><div><strong>未设置读取接口 token。</strong>同一台主机上任何有 shell 权限的人都能读到这个 server 的健康数据 → 请部署在只有你自己使用的服务器上。</div></aside>
+    <aside class="callout" data-lang-only="en"><div class="icon">⚠️</div><div><strong>For personal use, the read routes have no token.</strong> Anyone with a shell on the same host can read your health data → run it on a single-user server.</div></aside>
+    <aside class="callout" data-lang-only="zh"><div class="icon">⚠️</div><div><strong>PulsHealth 什么时候同步，由 iOS 决定。</strong>iPhone 锁屏时 HealthKit 数据是加密的，所以夜间的数据要等第一次解锁后才会上传。我们的实测基线：白天数据到达的中位延迟约 33 分钟，夜间约 4 小时；AI 读到的心率在白天只有约 7% 的时间是 15 分钟以内的。</div></aside>
+    <aside class="callout" data-lang-only="en"><div class="icon">⚠️</div><div><strong>iOS decides when PulsHealth syncs.</strong> HealthKit data is encrypted while the iPhone is locked, so overnight data arrives after the first unlock. Our baseline: median arrival lag about 33 min by day and about 4 h at night; the agent's heart rate was ≤15 min old only about 7% of the day.</div></aside>
+    <p data-lang-only="zh">ChatGPT 的自定义 MCP 需要设置 OpenAI Private MCP Tunnel，具体设置方法见 → <a href="https://kohaku4yz.github.io/haru-vps-mcp/" target="_blank" rel="noreferrer">haru-vps-mcp setup</a>。</p>
+    <p data-lang-only="en">ChatGPT access goes through the OpenAI private MCP tunnel; for setup details see → <a href="https://kohaku4yz.github.io/haru-vps-mcp/" target="_blank" rel="noreferrer">haru-vps-mcp setup</a>.</p>
+  </section>
+
+  <section id="license">
+    <h2 data-lang-only="zh">许可证</h2>
+    <h2 data-lang-only="en">License</h2>
+    <p>MIT © kohaku4yz</p>
+  </section>
+
+  <section id="references" class="references">
+    <h2 data-lang-only="zh">参考</h2>
+    <h2 data-lang-only="en">References</h2>
+    <ul class="resources">
+      <li><a href="https://github.com/PulsHealth/pulshealth" target="_blank" rel="noreferrer">PulsHealth/pulshealth</a> · iOS app, Swift package and reference server (Apache-2.0)</li>
+      <li><a href="https://github.com/PulsHealth/pulshealth/tree/main/docs/protocol" target="_blank" rel="noreferrer">Puls Sync Protocol v1</a> · the wire format pulse-relay accepts</li>
+      <li><a href="https://kohaku4yz.github.io/haru-vps-mcp/" target="_blank" rel="noreferrer">Haru VPS MCP</a> · ChatGPT access through the OpenAI MCP tunnel</li>
+      <li><a href="https://modelcontextprotocol.io/" target="_blank" rel="noreferrer">Model Context Protocol</a></li>
+      <li><a href="https://developer.apple.com/documentation/healthkit/protecting-user-privacy" target="_blank" rel="noreferrer">Apple HealthKit · Protecting user privacy</a> · why locked-phone data waits</li>
+    </ul>
+  </section>
+
+  <footer>Pulse Relay · a small relay from your wrist to your AIs. 💞</footer>
+</main>
+
+<script>
+const languageMeta={
+  zh:{htmlLang:'zh-CN',title:'Pulse Relay — 自托管指南',description:'Pulse Relay：把 Apple Watch 健康数据通过 PulsHealth 同步到一个 SQLite 文件，再用两个 MCP 工具交给 AI 的自托管指南。'},
+  en:{htmlLang:'en',title:'Pulse Relay — Self-hosting guide',description:'Pulse Relay: a self-hosting guide for syncing Apple Watch health data through PulsHealth into one SQLite file and handing compact summaries to AIs over MCP.'}
+};
+function applyLanguage(lang){
+  if(!languageMeta[lang]) lang='zh';
+  const meta=languageMeta[lang];
+  document.documentElement.dataset.uiLang=lang;
+  document.documentElement.lang=meta.htmlLang;
+  document.title=meta.title;
+  document.querySelector('meta[name="description"]').setAttribute('content',meta.description);
+  document.querySelector('.topline').setAttribute('aria-label',lang==='zh'?'面包屑':'Breadcrumb');
+  document.querySelector('.toc-dock').setAttribute('aria-label',lang==='zh'?'页面目录':'Table of contents');
+  document.querySelector('.toc-rail').setAttribute('aria-label',lang==='zh'?'目录快速导航':'Quick section navigation');
+  document.querySelector('.toc-panel').setAttribute('aria-label',lang==='zh'?'页面目录展开':'Expanded table of contents');
+  document.querySelectorAll('[data-label-zh][data-label-en]').forEach(a=>{
+    const label=a.dataset[lang==='zh'?'labelZh':'labelEn'];
+    a.setAttribute('aria-label',label);
+    a.setAttribute('title',label);
+    if(a.closest('.toc-panel')) a.textContent=label;
+  });
+  document.querySelectorAll('[data-lang-set]').forEach(btn=>{
+    const active=btn.dataset.langSet===lang;
+    btn.classList.toggle('active',active);
+    btn.setAttribute('aria-pressed',String(active));
+  });
+  try{localStorage.setItem('pulse-relay-doc-lang',lang)}catch{}
+}
+document.querySelectorAll('[data-lang-set]').forEach(btn=>btn.addEventListener('click',()=>applyLanguage(btn.dataset.langSet)));
+let initialLanguage='zh';
+try{initialLanguage=localStorage.getItem('pulse-relay-doc-lang')||'zh'}catch{}
+const forced=new URLSearchParams(location.search).get('lang');
+if(forced) initialLanguage=forced;
+applyLanguage(initialLanguage);
+
+document.querySelectorAll('.copy').forEach(btn=>{
+  btn.addEventListener('click',async()=>{
+    const text=btn.parentElement.querySelector('pre').innerText;
+    try{await navigator.clipboard.writeText(text);btn.textContent='Copied';setTimeout(()=>btn.textContent='Copy',1100)}
+    catch{btn.textContent='Select'}
+  });
+});
+const allLinks=[...document.querySelectorAll('.toc-rail a, .toc-panel a')];
+const ids=[...new Set(allLinks.map(a=>a.getAttribute('href')).filter(Boolean))];
+const sections=ids.map(id=>document.querySelector(id)).filter(Boolean);
+const setActive=id=>allLinks.forEach(a=>a.classList.toggle('active',a.getAttribute('href')===id));
+const io=new IntersectionObserver(entries=>{
+  const visible=entries.filter(e=>e.isIntersecting).sort((a,b)=>a.boundingClientRect.top-b.boundingClientRect.top);
+  if(visible[0]) setActive('#'+visible[0].target.id);
+},{rootMargin:'-15% 0px -72% 0px',threshold:[0,.1,.5]});
+sections.forEach(s=>io.observe(s));
+setActive('#ios');
+</script>
+</body>
+</html>

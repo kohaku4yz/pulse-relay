@@ -1,0 +1,50 @@
+[Unit]
+Description=pulse-relay health service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pulse-relay
+Group=pulse-relay
+WorkingDirectory=/opt/pulse-relay
+UMask=0077
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PULSE_RELAY_HOST=127.0.0.1
+Environment=PULSE_RELAY_PORT=8768
+Environment=PULSE_RELAY_DATA_DIR=/var/lib/pulse-relay
+Environment=PULSE_RELAY_MAX_BODY_BYTES=5242880
+EnvironmentFile=/etc/pulse-relay/service.env
+ExecStart=/usr/bin/python3 -m pulse_relay.server
+Restart=on-failure
+RestartSec=3s
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictNamespaces=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+ReadOnlyPaths=/opt/pulse-relay
+ReadWritePaths=/var/lib/pulse-relay
+InaccessiblePaths=/root /home
+IPAddressAllow=127.0.0.0/8
+IPAddressAllow=::1/128
+IPAddressDeny=any
+
+[Install]
+WantedBy=multi-user.target

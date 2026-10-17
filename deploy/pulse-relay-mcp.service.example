@@ -1,0 +1,48 @@
+[Unit]
+Description=pulse-relay health MCP
+After=network-online.target pulse-relay.service
+Wants=network-online.target pulse-relay.service
+
+[Service]
+Type=simple
+User=pulse-relay-mcp
+Group=pulse-relay-mcp
+WorkingDirectory=/opt/pulse-relay-mcp/app
+UMask=0077
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PULSE_RELAY_MCP_HOST=127.0.0.1
+Environment=PULSE_RELAY_MCP_PORT=8879
+Environment=PULSE_RELAY_MCP_PATH=/mcp
+Environment=PULSE_RELAY_SERVICE_URL=http://127.0.0.1:8768
+ExecStart=/opt/pulse-relay-mcp/venv/bin/python -m pulse_relay.mcp_server
+Restart=on-failure
+RestartSec=3s
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictNamespaces=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+ReadOnlyPaths=/opt/pulse-relay-mcp
+InaccessiblePaths=/root /home
+IPAddressAllow=127.0.0.0/8
+IPAddressAllow=::1/128
+IPAddressDeny=any
+
+[Install]
+WantedBy=multi-user.target

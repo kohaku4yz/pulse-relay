@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install MCP test dependencies
+        run: python -m pip install --disable-pip-version-check "mcp==1.28.1" "httpx==0.28.1"
+      - name: Compile
+        run: python -m compileall -q pulse_relay tests tests_mcp
+      - name: Test core service
+        run: PYTHONPATH=. python -m unittest discover -s tests -v
+      - name: Test MCP server
+        run: PYTHONPATH=. python -m unittest discover -s tests_mcp -v
+      - name: Shell syntax
+        run: |
+          bash -n deploy/install.sh
+          bash -n deploy/verify.sh
+          bash -n deploy/install-mcp.sh
+          bash -n deploy/pairing.sh
+      - name: Diff whitespace
+        shell: bash
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            git diff --check "${{ github.event.pull_request.base.sha }}...HEAD"
+          else
+            git diff-tree --check --no-commit-id -r HEAD
+          fi
