@@ -481,12 +481,12 @@ class StoreTests(unittest.TestCase):
             initialize_store(data_dir)
             db = data_dir / "health.sqlite3"
             rows = [
-                ("step_count", "2026-10-06T15:00:00Z", "2026-10-07", "PulsHealth aggregate:all:1:hour", "count", "aggregate", '{"bucket_end":"2026-10-06T16:00:00Z","device_filter":"all","func":"sum","interval_unit":"hour","interval_value":1,"qty":500}', "2026-10-06T18:00:00Z"),
-                ("step_count", "2026-10-06T16:00:00Z", "2026-10-07", "PulsHealth aggregate:all:1:hour", "count", "aggregate", '{"bucket_end":"2026-10-06T17:00:00Z","device_filter":"all","func":"sum","interval_unit":"hour","interval_value":1,"qty":600}', "2026-10-06T18:00:00Z"),
-                ("step_count", "2026-10-06T17:05:00Z", "2026-10-07", "Apple Watch", "count", "quantity", '{"qty":70}', "2026-10-06T18:00:00Z"),
-                ("step_count", "2026-10-06T17:15:00Z", "2026-10-07", "Apple Watch", "count", "quantity", '{"qty":30}', "2026-10-06T18:00:00Z"),
-                ("step_count", "2026-10-06T17:06:00Z", "2026-10-07", "iPhone", "count", "quantity", '{"qty":60}', "2026-10-06T18:00:00Z"),
-                ("step_count", "2026-10-06T17:16:00Z", "2026-10-07", "iPhone", "count", "quantity", '{"qty":25}', "2026-10-06T18:00:00Z"),
+                ("step_count", "2026-10-07T00:00:00Z", "2026-10-07", "PulsHealth aggregate:all:1:hour", "count", "aggregate", '{"bucket_end":"2026-10-07T01:00:00Z","device_filter":"all","func":"sum","interval_unit":"hour","interval_value":1,"qty":500}', "2026-10-07T03:00:00Z"),
+                ("step_count", "2026-10-07T01:00:00Z", "2026-10-07", "PulsHealth aggregate:all:1:hour", "count", "aggregate", '{"bucket_end":"2026-10-07T02:00:00Z","device_filter":"all","func":"sum","interval_unit":"hour","interval_value":1,"qty":600}', "2026-10-07T03:00:00Z"),
+                ("step_count", "2026-10-07T02:05:00Z", "2026-10-07", "Apple Watch", "count", "quantity", '{"qty":70}', "2026-10-07T03:00:00Z"),
+                ("step_count", "2026-10-07T02:15:00Z", "2026-10-07", "Apple Watch", "count", "quantity", '{"qty":30}', "2026-10-07T03:00:00Z"),
+                ("step_count", "2026-10-07T02:06:00Z", "2026-10-07", "iPhone", "count", "quantity", '{"qty":60}', "2026-10-07T03:00:00Z"),
+                ("step_count", "2026-10-07T02:16:00Z", "2026-10-07", "iPhone", "count", "quantity", '{"qty":25}', "2026-10-07T03:00:00Z"),
             ]
             with sqlite3.connect(db) as conn:
                 conn.executemany(
@@ -495,18 +495,18 @@ class StoreTests(unittest.TestCase):
                 )
                 conn.commit()
 
-            live = health_day(data_dir, "2026-10-07", now=datetime(2026, 10, 7, 3, 30, tzinfo=timezone.utc))
+            live = health_day(data_dir, "2026-10-07", now=datetime(2026, 10, 7, 12, 30, tzinfo=timezone.utc))
             self.assertEqual(live["activity"]["step_count"]["qty"], 1200)
             self.assertEqual(live["activity"]["step_count"]["buckets"], 4)
 
             with sqlite3.connect(db) as conn:
                 conn.execute(
                     "INSERT INTO metric_samples(metric,observed_at,local_date,source,units,kind,payload_json,received_at) VALUES (?,?,?,?,?,?,?,?)",
-                    ("step_count", "2026-10-06T15:00:00Z", "2026-10-07", "PulsHealth aggregate:all:1:day", "count", "aggregate", '{"bucket_end":"2026-10-07T15:00:00Z","device_filter":"all","func":"sum","interval_unit":"day","interval_value":1,"qty":1180}', "2026-10-07T16:00:00Z"),
+                    ("step_count", "2026-10-07T00:00:00Z", "2026-10-07", "PulsHealth aggregate:all:1:day", "count", "aggregate", '{"bucket_end":"2026-10-08T00:00:00Z","device_filter":"all","func":"sum","interval_unit":"day","interval_value":1,"qty":1180}', "2026-10-08T01:00:00Z"),
                 )
                 conn.commit()
 
-            final = health_day(data_dir, "2026-10-07", now=datetime(2026, 10, 8, 1, 5, tzinfo=timezone.utc))
+            final = health_day(data_dir, "2026-10-07", now=datetime(2026, 10, 8, 10, 5, tzinfo=timezone.utc))
             self.assertEqual(final["activity"]["step_count"]["qty"], 1180)
             self.assertEqual(final["activity"]["step_count"]["buckets"], 1)
 

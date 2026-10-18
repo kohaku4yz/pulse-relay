@@ -24,7 +24,7 @@ DEFAULT_PATH: Final[str] = "/mcp"
 DEFAULT_HEALTH_SERVICE_URL: Final[str] = "http://127.0.0.1:8768"
 _LOOPBACK_HOSTS: Final[frozenset[str]] = frozenset({"127.0.0.1", "localhost", "::1"})
 
-INSTRUCTIONS = """Read-only owner health context backed by the shared pulse-relay.
+INSTRUCTIONS = """Read-only owner health context backed by the pulse-relay server.
 Use health_detail for one local calendar day. With no date it returns the latest day with data.
 Use heartbeat for the latest available heart-rate sample. Always inspect age_seconds (when the sample
 was measured) and freshness_seconds (when the service last synced) before describing a value as current.

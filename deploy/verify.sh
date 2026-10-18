@@ -14,8 +14,9 @@ curl --fail --silent --show-error http://127.0.0.1:8768/v1/health/heartbeat | gr
 
 token="$(sed -n 's/^PULSE_RELAY_INGEST_TOKEN=//p' /etc/pulse-relay/service.env | head -n1)"
 [[ -n "${token}" ]] || { echo "FATAL: missing ingest token" >&2; exit 1; }
-curl --fail --silent --show-error \
-  --header "Authorization: Bearer ${token}" \
+# The header travels on stdin (printf is a builtin), so the token never appears in ps or /proc/<pid>/cmdline.
+printf 'Authorization: Bearer %s\n' "${token}" | curl --fail --silent --show-error \
+  --header @- \
   --header 'X-Puls-Protocol: 1' \
   http://127.0.0.1:8768/api/health-sync/v1/capabilities | grep -q '"protocolVersions":\[1\]'
 

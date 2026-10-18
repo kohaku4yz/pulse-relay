@@ -185,8 +185,8 @@ sudo bash /opt/pulse-relay/deploy/verify.sh</code></pre></div>
 
     <h3 data-lang-only="zh">2. 连接数据库</h3>
     <h3 data-lang-only="en">2. Connect the database</h3>
-    <p data-lang-only="zh">在 PulsHealth 的「Sync → Database」里填写 <strong>Database URL</strong> = <code>https://&lt;你的域名&gt;/api/health-sync</code>，<strong>Token</strong> = 上面那串 → 点 Test Connection → Save &amp; Apply。</p>
-    <p data-lang-only="en">Under <strong>Sync → Database</strong>, enter <strong>Database URL</strong> = <code>https://&lt;your-host&gt;/api/health-sync</code> and <strong>Token</strong> = the value above → Test Connection → Save &amp; Apply.</p>
+    <p data-lang-only="zh">在 PulsHealth 的「Sync → Database」里填写 <strong>Database URL</strong> = <code>https://&lt;你的域名&gt;/api/health-sync</code>，<strong>Token</strong> = 只填 <code>PULSE_RELAY_INGEST_TOKEN=</code> 后面那串（用 <code>sudo sed -n 's/^PULSE_RELAY_INGEST_TOKEN=//p' /etc/pulse-relay/service.env</code> 查看）→ 点 Test Connection → Save &amp; Apply。</p>
+    <p data-lang-only="en">Under <strong>Sync → Database</strong>, enter <strong>Database URL</strong> = <code>https://&lt;your-host&gt;/api/health-sync</code> and <strong>Token</strong> = only the part after <code>PULSE_RELAY_INGEST_TOKEN=</code> (print it with <code>sudo sed -n 's/^PULSE_RELAY_INGEST_TOKEN=//p' /etc/pulse-relay/service.env</code>) → Test Connection → Save &amp; Apply.</p>
     <p data-lang-only="zh">也可以扫码配对：下面的命令会打印一条 <code>puls://pair?…</code> 链接和终端二维码 → 用 iPhone 相机扫一下，PulsHealth 会自动填好 URL 和 Token。（pulse-relay 是单用户的，<code>user</code> 字段固定一个 UUID 就行。）</p>
     <p data-lang-only="en">Or pair by QR: the command below prints a <code>puls://pair?…</code> link and a terminal QR code → scan it with the iPhone camera → PulsHealth opens and fills in both fields. (pulse-relay is single-user, so the <code>user</code> field is a fixed UUID.)</p>
     <div class="code-wrap"><button class="copy" type="button">Copy</button><pre><code>sudo apt install qrencode   # optional, for the QR code
@@ -347,8 +347,8 @@ claude mcp add --transport http health http://127.0.0.1:8879/mcp</code></pre></d
     <h2 data-lang-only="en">Notes</h2>
     <aside class="callout" data-lang-only="zh"><div class="icon">⚠️</div><div><strong>未设置读取接口 token。</strong>同一台主机上任何有 shell 权限的人都能读到这个 server 的健康数据 → 请部署在只有你自己使用的服务器上。</div></aside>
     <aside class="callout" data-lang-only="en"><div class="icon">⚠️</div><div><strong>For personal use, the read routes have no token.</strong> Anyone with a shell on the same host can read your health data → run it on a single-user server.</div></aside>
-    <aside class="callout" data-lang-only="zh"><div class="icon">⚠️</div><div><strong>PulsHealth 什么时候同步，由 iOS 决定。</strong>iPhone 锁屏时 HealthKit 数据是加密的，所以夜间的数据要等第一次解锁后才会上传。我们的实测基线：白天数据到达的中位延迟约 33 分钟，夜间约 4 小时；AI 读到的心率在白天只有约 7% 的时间是 15 分钟以内的。</div></aside>
-    <aside class="callout" data-lang-only="en"><div class="icon">⚠️</div><div><strong>iOS decides when PulsHealth syncs.</strong> HealthKit data is encrypted while the iPhone is locked, so overnight data arrives after the first unlock. Our baseline: median arrival lag about 33 min by day and about 4 h at night; the agent's heart rate was ≤15 min old only about 7% of the day.</div></aside>
+    <aside class="callout" data-lang-only="zh"><div class="icon">⚠️</div><div><strong>PulsHealth 什么时候同步，由 iOS 决定。</strong>iPhone 锁屏时 HealthKit 数据是加密的，所以夜间的数据要等第一次解锁后才会上传。所以 AI 读到的心率通常是几十分钟前的，夜间可能是几个小时前的；请让 agent 先看 <code>age_seconds</code> 再下结论。</div></aside>
+    <aside class="callout" data-lang-only="en"><div class="icon">⚠️</div><div><strong>iOS decides when PulsHealth syncs.</strong> HealthKit data is encrypted while the iPhone is locked, so overnight data arrives after the first unlock. Expect the agent's heart rate to be tens of minutes old by day and hours old overnight, so have the agent check <code>age_seconds</code> before it draws conclusions.</div></aside>
     <p data-lang-only="zh">ChatGPT 的自定义 MCP 需要设置 OpenAI Private MCP Tunnel，具体设置方法见 → <a href="https://kohaku4yz.github.io/haru-vps-mcp/" target="_blank" rel="noreferrer">haru-vps-mcp setup</a>。</p>
     <p data-lang-only="en">ChatGPT access goes through the OpenAI private MCP tunnel; for setup details see → <a href="https://kohaku4yz.github.io/haru-vps-mcp/" target="_blank" rel="noreferrer">haru-vps-mcp setup</a>.</p>
   </section>

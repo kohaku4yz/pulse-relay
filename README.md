@@ -18,6 +18,8 @@ Apple Watch / iPhone (HealthKit)
 
 ## Quick start
 
+Needs a Linux host with systemd, Python ≥ 3.11 with `venv` (`python3-venv` on Debian/Ubuntu), `curl` and `ss` (iproute2). `qrencode` is optional, for the pairing QR code.
+
 ```bash
 # 1. Install the server (root-owned clone; tests run before the swap, rollback on failure)
 sudo git clone https://github.com/kohaku4yz/pulse-relay /root/pulse-relay
