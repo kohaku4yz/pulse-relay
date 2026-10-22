@@ -22,7 +22,7 @@ PROBE = textwrap.dedent(
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         try:
-            for path in ("/v1/health/heartbeat", "/v1/health/day", "/v1/health/demo"):
+            for path in ("/v1/health/heartbeat", "/v1/health/day", "/v1/health/vitals-outbox", "/v1/health/vitals"):
                 conn = http.client.HTTPConnection("127.0.0.1", server.server_address[1], timeout=3)
                 conn.request("GET", path)
                 response = conn.getresponse()
@@ -58,8 +58,8 @@ def copy_core(tmp: str, extensions: dict[str, str]) -> None:
 
 def probe(tmp: str, *paths: str) -> subprocess.CompletedProcess[str]:
     script = PROBE.replace(
-        '("/v1/health/heartbeat", "/v1/health/day", "/v1/health/demo")',
-        repr(("/v1/health/heartbeat", "/v1/health/day", "/v1/health/demo", *paths)),
+        '("/v1/health/heartbeat", "/v1/health/day", "/v1/health/vitals-outbox", "/v1/health/vitals")',
+        repr(("/v1/health/heartbeat", "/v1/health/day", "/v1/health/vitals-outbox", "/v1/health/vitals", *paths)),
     )
     return subprocess.run(
         [sys.executable, "-I", "-c", f"import sys; sys.path.insert(0, {tmp!r})\n" + script],
@@ -79,7 +79,8 @@ class CoreWithoutExtensionsTests(unittest.TestCase):
         lines = set(result.stdout.splitlines())
         self.assertIn("/v1/health/heartbeat 200", lines)
         self.assertIn("/v1/health/day 200", lines)
-        self.assertIn("/v1/health/demo 404", lines)
+        self.assertIn("/v1/health/vitals-outbox 404", lines)
+        self.assertIn("/v1/health/vitals 404", lines)
         self.assertIn("extensions_loaded False", lines)
 
     def test_any_installed_extension_is_discovered(self):

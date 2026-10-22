@@ -34,6 +34,9 @@ sudo bash /opt/pulse-relay/deploy/pairing.sh https://health.example.com
 # 4. Optional: the MCP server for Claude Code
 sudo bash /root/pulse-relay/deploy/install-mcp.sh
 claude mcp add --transport http health http://127.0.0.1:8879/mcp
+
+# 5. Optional: the Vitals extension (local change detector, sends nothing)
+sudo bash /opt/pulse-relay/deploy/extensions/vitals/enable-vitals.sh --install
 ```
 
 The first install creates the ingest token in `/etc/pulse-relay/service.env` (`PULSE_RELAY_INGEST_TOKEN`, root-only). Re-installing never changes it. The pairing link contains the token, so don't share or screenshot it.
@@ -59,6 +62,13 @@ Loopback only (`127.0.0.1:8768`, no auth, `Cache-Control: no-store`):
 | `GET /v1/health/now` | compact snapshot across days |
 | `GET /v1/health/detail?metric=heart_rate&hours=2&limit=120` | bounded recent series (hours 1–48, limit 1–500) |
 
+With the Vitals extension installed (also loopback only):
+
+| Route | |
+|---|---|
+| `GET /v1/health/vitals-outbox[?limit=1..100]` | fresh `life.vitals.changed` candidates (≤ 90 min old): opaque IDs, trigger names, times, small context |
+| `GET /v1/health/vitals[?limit=1..100]` | operator status: last tick, detector state, recent candidates |
+
 `age_seconds` is how old the measurement is; `freshness_seconds` is how long since the phone last synced. Empty or `unavailable` is not zero.
 
 ## How data is kept clean
@@ -70,6 +80,12 @@ Loopback only (`127.0.0.1:8768`, no auth, `Cache-Control: no-store`):
 - Units are normalized at read time (m→km, kJ→kcal, s→min) without rewriting stored rows.
 - Sleep comes from HealthKit sleep segments, grouped into the best overnight session.
 - Rows from the older Health Auto Export format are still readable (`POST /api/health-ingest` answers 410).
+
+## Vitals extension (optional)
+
+A five-minute systemd timer reads the stored heart-rate, step and sleep evidence and records coarse changes (`movement_started`, `movement_settled`, `heart_rate_rose`, `woke_up`, …) in its own private SQLite file. It has no network access and notifies no one: a consumer such as [haru-life-events](https://github.com/kohaku4yz/haru-life-events) polls the outbox. The first run learns the current state silently. Operations: [`pulse_relay/extensions/vitals/README.md`](pulse_relay/extensions/vitals/README.md). Algorithm and known limitations: [`ALGORITHM.md`](pulse_relay/extensions/vitals/ALGORITHM.md).
+
+⚠️ Wellness signals, not a medical monitor.
 
 ## Configuration
 
@@ -90,7 +106,8 @@ pulse_relay/
   store.py          SQLite schema, Puls parser, dedup, read algorithms
   health_client.py  compact client = the agent contract
   mcp_server.py     2-tool MCP server (FastMCP, streamable HTTP, loopback)
-  extensions/       (not included) add your own packages here to mount extra GET routes
+  extensions/       optional packages; each one with a routes module mounts extra GET routes
+    vitals/         change detector (tick.py), outbox + status routes
 deploy/             install / verify / pairing scripts, hardened systemd units, Caddy example
 tests/              stdlib unittest
 tests_mcp/          MCP tests (need mcp + httpx)
@@ -109,6 +126,12 @@ PYTHONPATH=. python3 -m unittest discover -s tests -v
 python3 -m pip install "mcp==1.28.1" "httpx==0.28.1"
 PYTHONPATH=. python3 -m unittest discover -s tests_mcp -v
 ```
+
+## Changelog
+
+- **v0.2.0**: the optional Vitals extension (detectors, 5-minute timer, outbox and status routes, `enable-vitals.sh`). Its reads are WAL-safe: the timer can open the live health DB read-only, and a store it can't read fails the run instead of counting as "no data".
+- **v0.1.1**: `verify.sh` passes the token via stdin; UTC test fixtures.
+- **v0.1.0**: first release.
 
 ## License
 

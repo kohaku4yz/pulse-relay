@@ -32,6 +32,7 @@ jobs:
           bash -n deploy/verify.sh
           bash -n deploy/install-mcp.sh
           bash -n deploy/pairing.sh
+          for script in deploy/extensions/*/*.sh; do bash -n "$script"; done
       - name: Diff whitespace
         shell: bash
         run: |

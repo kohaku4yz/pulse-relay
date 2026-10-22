@@ -1,0 +1,32 @@
+# Read-only PulsHealth signal detection; NO network and NO agent delivery.
+[Unit]
+Description=pulse-relay PulsHealth Vitals check (no notifications)
+After=pulse-relay.service
+Wants=pulse-relay.service
+
+[Service]
+Type=oneshot
+User=pulse-relay
+Group=pulse-relay
+WorkingDirectory=/opt/pulse-relay
+ExecStart=/usr/bin/python3 -m pulse_relay.extensions.vitals.tick --data-dir /var/lib/pulse-relay --state-dir /var/lib/pulse-relay/vitals
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectHome=yes
+ProtectSystem=strict
+ProtectControlGroups=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+# The health DB is in WAL mode: even a read-only reader needs to create the
+# -shm/-wal files next to it. The data directory is writable for that, and the
+# DB file itself is bind-mounted read-only so this unit cannot change it.
+ReadWritePaths=/var/lib/pulse-relay
+ReadOnlyPaths=/var/lib/pulse-relay/health.sqlite3
+IPAddressDeny=any
+RestrictAddressFamilies=AF_UNIX
+CapabilityBoundingSet=
+RestrictSUIDSGID=yes
+LockPersonality=yes
+TimeoutStartSec=30s

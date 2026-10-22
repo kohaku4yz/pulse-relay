@@ -1,0 +1,12 @@
+[Unit]
+Description=Evaluate PulsHealth activity, pulse, and sleep changes privately every 5 min
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=30s
+RandomizedDelaySec=15s
+Unit=pulse-relay-vitals.service
+
+[Install]
+WantedBy=timers.target

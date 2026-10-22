@@ -116,6 +116,7 @@ td code{font-size:.78rem;color:var(--text);background:none;padding:0;overflow-wr
     <a href="#structure" data-label-zh="仓库结构" data-label-en="Repository structure"></a>
     <a href="#schema" data-label-zh="数据结构" data-label-en="Data schema"></a>
     <a href="#mcp" data-label-zh="MCP 工具与读取算法" data-label-en="MCP tools &amp; reads"></a>
+    <a href="#vitals" data-label-zh="Vitals 扩展（可选）" data-label-en="Vitals extension"></a>
     <a href="#growth" data-label-zh="数据增长参考" data-label-en="Data growth"></a>
     <a href="#notes" data-label-zh="注意事项" data-label-en="Notes"></a>
     <a href="#license" data-label-zh="许可证" data-label-en="License"></a>
@@ -126,6 +127,7 @@ td code{font-size:.78rem;color:var(--text);background:none;padding:0;overflow-wr
     <a href="#structure" data-label-zh="仓库结构" data-label-en="Repository structure">仓库结构</a>
     <a href="#schema" data-label-zh="数据结构" data-label-en="Data schema">数据结构</a>
     <a href="#mcp" data-label-zh="MCP 工具与读取算法" data-label-en="MCP tools &amp; reads">MCP 工具与读取算法</a>
+    <a href="#vitals" data-label-zh="Vitals 扩展（可选）" data-label-en="Vitals extension">Vitals 扩展（可选）</a>
     <a href="#growth" data-label-zh="数据增长参考" data-label-en="Data growth">数据增长参考</a>
     <a href="#notes" data-label-zh="注意事项" data-label-en="Notes">注意事项</a>
     <a href="#license" data-label-zh="许可证" data-label-en="License">许可证</a>
@@ -228,14 +230,16 @@ sudo bash /opt/pulse-relay/deploy/pairing.sh https://health.example.com</code></
 │   ├── server.py         # stdlib HTTP server: Puls ingest + 4 read routes
 │   ├── store.py          # SQLite schema, Puls parser, dedup, read algorithms
 │   ├── health_client.py  # compact client = the agent contract
-│   └── mcp_server.py     # 2-tool MCP server (FastMCP, streamable HTTP)
+│   ├── mcp_server.py     # 2-tool MCP server (FastMCP, streamable HTTP)
+│   └── extensions/vitals/  # optional change detector (tick.py) + 2 routes
 ├── deploy/
 │   ├── install.sh / verify.sh        # root installer: test → swap → rollback
 │   ├── pulse-relay.service.example   # hardened systemd unit
 │   ├── pairing.sh                    # prints puls://pair link + QR
 │   ├── install-mcp.sh + .service     # optional MCP install
-│   └── caddy-route.example
-├── tests/        # stdlib unittest (ingest, dedup, reads, agent contract)
+│   ├── caddy-route.example
+│   └── extensions/vitals/            # enable-vitals.sh + timer/service
+├── tests/        # stdlib unittest (ingest, dedup, reads, agent contract, vitals/)
 └── tests_mcp/    # MCP tool tests</code></pre></div>
     <p data-lang-only="zh">核心代码约 2k 行，服务器<strong>零运行时依赖</strong>（只用 Python 标准库）；可选的 MCP 额外需要 <code>mcp</code> + <code>httpx</code>。</p>
     <p data-lang-only="en">About 2k lines of core code with <strong>zero runtime dependencies</strong> for the server (Python stdlib only); the optional MCP adds <code>mcp</code> + <code>httpx</code>.</p>
@@ -321,6 +325,46 @@ AI agent ◀──── compact JSON (allow-listed keys only) ────┘</
     <p data-lang-only="en">Connect Claude Code (running on the same host as the MCP):</p>
     <div class="code-wrap"><button class="copy" type="button">Copy</button><pre><code>sudo bash /root/pulse-relay/deploy/install-mcp.sh
 claude mcp add --transport http health http://127.0.0.1:8879/mcp</code></pre></div>
+  </section>
+
+  <section id="vitals">
+    <h2 data-lang-only="zh">Vitals 扩展（可选）</h2>
+    <h2 data-lang-only="en">Vitals extension (optional)</h2>
+    <p data-lang-only="zh">v0.2 新增。一个每 5 分钟运行一次的本地检测器：读取已存的心率、步数和睡眠数据，发现「开始走路 / 停下来 / 心率升高 / 醒来」这类<strong>粗粒度变化</strong>，记进自己的私有 SQLite。它<strong>不联网、不发通知</strong>，只是把候选事件放进 outbox，由别的服务（例如 <a href="https://github.com/kohaku4yz/haru-life-events" target="_blank" rel="noreferrer">haru-life-events</a>）来取。</p>
+    <p data-lang-only="en">New in v0.2. A local detector that runs every five minutes: it reads the stored heart-rate, step and sleep data, notices <strong>coarse changes</strong> such as "started walking / settled / heart rate rose / woke up", and records them in its own private SQLite file. It has <strong>no network and sends no notifications</strong>. It only puts candidates in an outbox, and another service (for example <a href="https://github.com/kohaku4yz/haru-life-events" target="_blank" rel="noreferrer">haru-life-events</a>) picks them up.</p>
+    <div class="code-wrap"><pre><code>health.sqlite3  (read-only, WAL-safe)
+        │
+        ▼
+tick.py   every 5 min · systemd timer · no network
+        │  step / heart / sleep detectors
+        │  first run = silent bootstrap
+        ▼
+vitals/state.sqlite3   detector state + coarse candidates (30 days)
+        │
+        ▼
+GET /v1/health/vitals-outbox   loopback · fresh (≤ 90 min) · opaque IDs
+        │
+        ▼
+your consumer   e.g. haru-life-events → the agent</code></pre></div>
+    <h3 data-lang-only="zh">1. 安装核心之后启用</h3>
+    <h3 data-lang-only="en">1. Enable it after the core install</h3>
+    <p data-lang-only="zh"><code>install.sh</code> 已经把 <code>extensions/</code> 一起部署好了，这一步只装 timer。第一次运行会先静默学习当前状态，不会把历史数据当成新事件。</p>
+    <p data-lang-only="en"><code>install.sh</code> already deploys <code>extensions/</code>; this step only installs the timer. The first run learns the current state silently, so old data never shows up as new events.</p>
+    <div class="code-wrap"><button class="copy" type="button">Copy</button><pre><code>sudo bash /opt/pulse-relay/deploy/extensions/vitals/enable-vitals.sh --install
+sudo bash /opt/pulse-relay/deploy/extensions/vitals/enable-vitals.sh --status</code></pre></div>
+    <h3 data-lang-only="zh">2. 读取</h3>
+    <h3 data-lang-only="en">2. Read it</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Route</th><th>Returns</th></tr></thead>
+      <tbody>
+        <tr><td><code>GET /v1/health/vitals-outbox?limit=1..100</code></td><td><code>status, event_name="life.vitals.changed", candidates[{event_id, triggers[], observed_at, recorded_at}], snapshot{…}</code></td></tr>
+        <tr><td><code>GET /v1/health/vitals?limit=1..100</code></td><td>operator status: last tick, detector state, recent candidates</td></tr>
+      </tbody>
+    </table></div>
+    <p data-lang-only="zh">触发类型：<code>movement_started</code> · <code>movement_settled</code> · <code>heart_rate_rose</code> · <code>heart_rate_fell</code> · <code>sleep_started</code> · <code>woke_up</code>。算法和已知限制见 <a href="https://github.com/kohaku4yz/pulse-relay/blob/main/pulse_relay/extensions/vitals/ALGORITHM.md" target="_blank" rel="noreferrer">ALGORITHM.md</a>。</p>
+    <p data-lang-only="en">Triggers: <code>movement_started</code> · <code>movement_settled</code> · <code>heart_rate_rose</code> · <code>heart_rate_fell</code> · <code>sleep_started</code> · <code>woke_up</code>. Algorithm and known limitations: <a href="https://github.com/kohaku4yz/pulse-relay/blob/main/pulse_relay/extensions/vitals/ALGORITHM.md" target="_blank" rel="noreferrer">ALGORITHM.md</a>.</p>
+    <aside class="callout" data-lang-only="zh"><div class="icon">⚠️</div><div><strong>这是生活状态信号，不是医疗监测。</strong>夜里 iPhone 锁屏时数据传不上来，所以「入睡」几乎不会实时触发，早上第一次走路有时也会漏掉。</div></aside>
+    <aside class="callout" data-lang-only="en"><div class="icon">⚠️</div><div><strong>Wellness signals, not a medical monitor.</strong> Overnight data waits for the phone to unlock, so "fell asleep" almost never fires live, and the first walk of the morning is sometimes missed.</div></aside>
   </section>
 
   <section id="growth">
